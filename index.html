@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPL Analytics Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay">
+  <div class="loading-content">
+    <div class="ipl-loader">
+      <div class="cricket-ball"></div>
+    </div>
+    <h3 class="loading-text">IPL Analytics</h3>
+    <p class="loading-sub">Loading Dashboard...</p>
+    <div class="progress mt-3" style="width:220px;">
+      <div id="loadProgress" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg ipl-navbar sticky-top">
+  <div class="container-fluid px-4">
+    <div class="navbar-brand d-flex align-items-center gap-2">
+      <div class="ipl-logo-wrapper">
+        <i class="fas fa-cricket-bat-ball ipl-logo-icon"></i>
+      </div>
+      <div>
+        <span class="brand-title">IPL Analytics</span>
+        <span class="brand-sub d-block">Pro Dashboard 2024</span>
+      </div>
+    </div>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navContent">
+      <ul class="navbar-nav ms-auto align-items-center gap-2">
+        <li class="nav-item">
+          <a class="nav-link active" href="#overview"><i class="fas fa-chart-line me-1"></i>Overview</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#players"><i class="fas fa-user-circle me-1"></i>Players</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#teams"><i class="fas fa-shield-halved me-1"></i>Teams</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#insights"><i class="fas fa-lightbulb me-1"></i>Insights</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#tables"><i class="fas fa-table me-1"></i>Data</a>
+        </li>
+        <li class="nav-item">
+          <label class="upload-btn-wrapper">
+            <button class="btn btn-upload" onclick="document.getElementById('fileUpload').click()">
+              <i class="fas fa-upload me-1"></i>Upload Data
+            </button>
+            <input type="file" id="fileUpload" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFileUpload(event)" />
+          </label>
+        </li>
+        <li class="nav-item">
+          <button class="btn btn-icon" id="themeToggle" onclick="toggleTheme()" title="Toggle Theme">
+            <i class="fas fa-moon" id="themeIcon"></i>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="btn btn-icon" onclick="downloadPDF()" title="Download PDF">
+            <i class="fas fa-file-pdf"></i>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="btn btn-icon" onclick="toggleFullscreen()" title="Fullscreen">
+            <i class="fas fa-expand" id="fsIcon"></i>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- ALERT ZONE -->
+<div id="alertZone" class="container-fluid px-4 mt-2"></div>
+
+<!-- FILTERS -->
+<section class="container-fluid px-4 mt-3" id="filters">
+  <div class="glass-card p-3">
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-md-2">
+        <label class="filter-label"><i class="fas fa-calendar me-1"></i>Season</label>
+        <select class="form-select glass-select" id="filterSeason" onchange="applyFilters()">
+          <option value="all">All Seasons</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2">
+        <label class="filter-label"><i class="fas fa-shield-halved me-1"></i>Team</label>
+        <select class="form-select glass-select" id="filterTeam" onchange="applyFilters()">
+          <option value="all">All Teams</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2">
+        <label class="filter-label"><i class="fas fa-user me-1"></i>Player</label>
+        <select class="form-select glass-select" id="filterPlayer" onchange="applyFilters()">
+          <option value="all">All Players</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2">
+        <label class="filter-label"><i class="fas fa-location-dot me-1"></i>Venue</label>
+        <select class="form-select glass-select" id="filterVenue" onchange="applyFilters()">
+          <option value="all">All Venues</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2">
+        <label class="filter-label"><i class="fas fa-trophy me-1"></i>Result</label>
+        <select class="form-select glass-select" id="filterResult" onchange="applyFilters()">
+          <option value="all">All Results</option>
+          <option value="Won">Won</option>
+          <option value="Lost">Lost</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-flex gap-2">
+        <button class="btn btn-reset flex-fill" onclick="resetFilters()">
+          <i class="fas fa-rotate-left me-1"></i>Reset
+        </button>
+        <button class="btn btn-compare flex-fill" data-bs-toggle="modal" data-bs-target="#compareModal">
+          <i class="fas fa-code-compare me-1"></i>Compare
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- KPI CARDS -->
+<section class="container-fluid px-4 mt-4" id="overview">
+  <div class="section-header mb-3">
+    <h5 class="section-title"><i class="fas fa-gauge-high me-2"></i>Key Performance Indicators</h5>
+  </div>
+  <div class="row g-3">
+    <div class="col-6 col-md-3 col-lg-3">
+      <div class="kpi-card" id="kpiMatches">
+        <div class="kpi-icon"><i class="fas fa-circle-play"></i></div>
+        <div class="kpi-value" id="kpiMatchesVal">0</div>
+        <div class="kpi-label">Total Matches</div>
+        <div class="kpi-trend"><i class="fas fa-arrow-up"></i> Live Season</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-3">
+      <div class="kpi-card" id="kpiTeams">
+        <div class="kpi-icon"><i class="fas fa-shield-halved"></i></div>
+        <div class="kpi-value" id="kpiTeamsVal">0</div>
+        <div class="kpi-label">Total Teams</div>
+        <div class="kpi-trend"><i class="fas fa-arrow-up"></i> All Franchises</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-3">
+      <div class="kpi-card" id="kpiPlayers">
+        <div class="kpi-icon"><i class="fas fa-users"></i></div>
+        <div class="kpi-value" id="kpiPlayersVal">0</div>
+        <div class="kpi-label">Total Players</div>
+        <div class="kpi-trend"><i class="fas fa-arrow-up"></i> Registered</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-3">
+      <div class="kpi-card" id="kpiRuns">
+        <div class="kpi-icon"><i class="fas fa-baseball-bat-ball"></i></div>
+        <div class="kpi-value" id="kpiRunsVal">0</div>
+        <div class="kpi-label">Total Runs</div>
+        <div class="kpi-trend"><i class="fas fa-arrow-up"></i> Across Seasons</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-3">
+      <div class="kpi-card" id="kpiWickets">
+        <div class="kpi-icon"><i class="fas fa-bowling-ball"></i></div>
+        <div class="kpi-value" id="kpiWicketsVal">0</div>
+        <div class="kpi-label">Total Wickets</div>
+        <div class="kpi-trend"><i class="fas fa-fire"></i> Bowling</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-3">
+      <div class="kpi-card" id="kpiHighScore">
+        <div class="kpi-icon"><i class="fas fa-star"></i></div>
+        <div class="kpi-value" id="kpiHighScoreVal">0</div>
+        <div class="kpi-label">Highest Team Score</div>
+        <div class="kpi-trend"><i class="fas fa-trophy"></i> Record</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-3">
+      <div class="kpi-card" id="kpiSR">
+        <div class="kpi-icon"><i class="fas fa-bolt"></i></div>
+        <div class="kpi-value" id="kpiSRVal">0</div>
+        <div class="kpi-label">Avg Strike Rate</div>
+        <div class="kpi-trend"><i class="fas fa-chart-line"></i> Batting</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-3">
+      <div class="kpi-card" id="kpiEcon">
+        <div class="kpi-icon"><i class="fas fa-gauge"></i></div>
+        <div class="kpi-value" id="kpiEconVal">0</div>
+        <div class="kpi-label">Avg Economy Rate</div>
+        <div class="kpi-trend"><i class="fas fa-chart-line"></i> Bowling</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHARTS ROW 1 -->
+<section class="container-fluid px-4 mt-4">
+  <div class="row g-4">
+    <div class="col-12 col-lg-8">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h6><i class="fas fa-chart-bar me-2"></i>Team-wise Total Runs</h6>
+          <button class="btn btn-chart-action" onclick="downloadChart('teamRunsChart')"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="chart-body">
+          <canvas id="teamRunsChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-4">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h6><i class="fas fa-chart-pie me-2"></i>Team Win Percentage</h6>
+          <button class="btn btn-chart-action" onclick="downloadChart('winPieChart')"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="chart-body">
+          <canvas id="winPieChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHARTS ROW 2 -->
+<section class="container-fluid px-4 mt-4">
+  <div class="row g-4">
+    <div class="col-12 col-lg-6">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h6><i class="fas fa-chart-line me-2"></i>Season-wise Runs Trend</h6>
+          <button class="btn btn-chart-action" onclick="downloadChart('seasonTrendChart')"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="chart-body">
+          <canvas id="seasonTrendChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h6><i class="fas fa-chart-bar me-2"></i>Top 10 Run Scorers</h6>
+          <button class="btn btn-chart-action" onclick="downloadChart('topBattersChart')"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="chart-body">
+          <canvas id="topBattersChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHARTS ROW 3 -->
+<section class="container-fluid px-4 mt-4">
+  <div class="row g-4">
+    <div class="col-12 col-lg-6">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h6><i class="fas fa-chart-bar me-2"></i>Top 10 Wicket Takers</h6>
+          <button class="btn btn-chart-action" onclick="downloadChart('topBowlersChart')"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="chart-body">
+          <canvas id="topBowlersChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-3">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h6><i class="fas fa-circle-dot me-2"></i>Boundary Analysis</h6>
+          <button class="btn btn-chart-action" onclick="downloadChart('boundaryChart')"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="chart-body">
+          <canvas id="boundaryChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-3">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h6><i class="fas fa-chart-pie me-2"></i>Match Result Analysis</h6>
+          <button class="btn btn-chart-action" onclick="downloadChart('resultPieChart')"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="chart-body">
+          <canvas id="resultPieChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHARTS ROW 4 -->
+<section class="container-fluid px-4 mt-4">
+  <div class="row g-4">
+    <div class="col-12 col-lg-4">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h6><i class="fas fa-chart-bar me-2"></i>Venue Performance</h6>
+          <button class="btn btn-chart-action" onclick="downloadChart('venueChart')"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="chart-body">
+          <canvas id="venueChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-4">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h6><i class="fas fa-circle-dot me-2"></i>Strike Rate vs Runs (Scatter)</h6>
+          <button class="btn btn-chart-action" onclick="downloadChart('scatterChart')"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="chart-body">
+          <canvas id="scatterChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-4">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h6><i class="fas fa-chart-bar me-2"></i>Economy Rate Analysis</h6>
+          <button class="btn btn-chart-action" onclick="downloadChart('economyChart')"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="chart-body">
+          <canvas id="economyChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PLAYER ANALYTICS -->
+<section class="container-fluid px-4 mt-4" id="players">
+  <div class="section-header mb-3">
+    <h5 class="section-title"><i class="fas fa-user-circle me-2"></i>Player Analytics</h5>
+  </div>
+  <div class="row g-3" id="playerCardsRow"></div>
+</section>
+
+<!-- TEAM ANALYTICS -->
+<section class="container-fluid px-4 mt-4" id="teams">
+  <div class="section-header mb-3">
+    <h5 class="section-title"><i class="fas fa-shield-halved me-2"></i>Team Analytics</h5>
+  </div>
+  <div class="row g-3" id="teamCardsRow"></div>
+</section>
+
+<!-- AI INSIGHTS -->
+<section class="container-fluid px-4 mt-4" id="insights">
+  <div class="section-header mb-3">
+    <h5 class="section-title"><i class="fas fa-robot me-2"></i>AI Insights Panel</h5>
+  </div>
+  <div class="glass-card p-4">
+    <div class="row g-3" id="insightsGrid"></div>
+  </div>
+</section>
+
+<!-- PREDICTION SECTION -->
+<section class="container-fluid px-4 mt-4" id="predictions">
+  <div class="section-header mb-3">
+    <h5 class="section-title"><i class="fas fa-wand-magic-sparkles me-2"></i>Predictions & Forecasts</h5>
+  </div>
+  <div class="row g-3" id="predictionCards"></div>
+</section>
+
+<!-- DATA TABLES -->
+<section class="container-fluid px-4 mt-4 mb-5" id="tables">
+  <div class="section-header mb-3">
+    <h5 class="section-title"><i class="fas fa-table me-2"></i>Data Explorer</h5>
+  </div>
+  <!-- Tab Navigation -->
+  <div class="glass-card p-3">
+    <ul class="nav nav-tabs glass-tabs mb-3" id="dataTabs">
+      <li class="nav-item">
+        <a class="nav-link active" data-bs-toggle="tab" href="#tabPlayers"><i class="fas fa-user me-1"></i>Players</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#tabTeams"><i class="fas fa-shield-halved me-1"></i>Teams</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#tabMatches"><i class="fas fa-circle-play me-1"></i>Matches</a>
+      </li>
+    </ul>
+    <div class="tab-content">
+      <!-- Players Table -->
+      <div class="tab-pane fade show active" id="tabPlayers">
+        <div class="d-flex justify-content-end gap-2 mb-3">
+          <button class="btn btn-export" onclick="exportTableCSV('playerTable', 'IPL_Players')"><i class="fas fa-file-csv me-1"></i>CSV</button>
+          <button class="btn btn-export" onclick="exportTableExcel('playerTable', 'IPL_Players')"><i class="fas fa-file-excel me-1"></i>Excel</button>
+        </div>
+        <div class="table-responsive">
+          <table id="playerTable" class="table ipl-table display" style="width:100%">
+            <thead>
+              <tr>
+                <th>Player</th><th>Team</th><th>Role</th><th>Runs</th>
+                <th>Balls</th><th>SR</th><th>4s</th><th>6s</th>
+                <th>Wickets</th><th>Economy</th><th>Season</th>
+              </tr>
+            </thead>
+            <tbody id="playerTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Teams Table -->
+      <div class="tab-pane fade" id="tabTeams">
+        <div class="d-flex justify-content-end gap-2 mb-3">
+          <button class="btn btn-export" onclick="exportTableCSV('teamTable', 'IPL_Teams')"><i class="fas fa-file-csv me-1"></i>CSV</button>
+          <button class="btn btn-export" onclick="exportTableExcel('teamTable', 'IPL_Teams')"><i class="fas fa-file-excel me-1"></i>Excel</button>
+        </div>
+        <div class="table-responsive">
+          <table id="teamTable" class="table ipl-table display" style="width:100%">
+            <thead>
+              <tr>
+                <th>Team</th><th>Matches</th><th>Wins</th><th>Losses</th>
+                <th>Win%</th><th>Total Runs</th><th>Avg Runs</th><th>Total Wickets</th>
+              </tr>
+            </thead>
+            <tbody id="teamTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Matches Table -->
+      <div class="tab-pane fade" id="tabMatches">
+        <div class="d-flex justify-content-end gap-2 mb-3">
+          <button class="btn btn-export" onclick="exportTableCSV('matchTable', 'IPL_Matches')"><i class="fas fa-file-csv me-1"></i>CSV</button>
+          <button class="btn btn-export" onclick="exportTableExcel('matchTable', 'IPL_Matches')"><i class="fas fa-file-excel me-1"></i>Excel</button>
+        </div>
+        <div class="table-responsive">
+          <table id="matchTable" class="table ipl-table display" style="width:100%">
+            <thead>
+              <tr>
+                <th>Match ID</th><th>Season</th><th>Team</th><th>Opponent</th>
+                <th>Venue</th><th>Date</th><th>Result</th><th>POTM</th>
+              </tr>
+            </thead>
+            <tbody id="matchTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARE MODAL -->
+<div class="modal fade" id="compareModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content glass-modal">
+      <div class="modal-header border-0">
+        <h5 class="modal-title"><i class="fas fa-code-compare me-2"></i>Comparison Tool</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <ul class="nav nav-tabs glass-tabs mb-3" id="compareTabs">
+          <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#comparePlayer"><i class="fas fa-user me-1"></i>Player Compare</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#compareTeam"><i class="fas fa-shield-halved me-1"></i>Team Compare</a>
+          </li>
+        </ul>
+        <div class="tab-content">
+          <div class="tab-pane fade show active" id="comparePlayer">
+            <div class="row g-3 mb-3">
+              <div class="col-md-5">
+                <select class="form-select glass-select" id="compareP1" onchange="renderCompare()">
+                  <option value="">Select Player 1</option>
+                </select>
+              </div>
+              <div class="col-md-2 text-center d-flex align-items-center justify-content-center">
+                <span class="vs-badge">VS</span>
+              </div>
+              <div class="col-md-5">
+                <select class="form-select glass-select" id="compareP2" onchange="renderCompare()">
+                  <option value="">Select Player 2</option>
+                </select>
+              </div>
+            </div>
+            <div id="playerCompareResult"></div>
+            <canvas id="playerCompareChart" style="max-height:300px"></canvas>
+          </div>
+          <div class="tab-pane fade" id="compareTeam">
+            <div class="row g-3 mb-3">
+              <div class="col-md-5">
+                <select class="form-select glass-select" id="compareT1" onchange="renderTeamCompare()">
+                  <option value="">Select Team 1</option>
+                </select>
+              </div>
+              <div class="col-md-2 text-center d-flex align-items-center justify-content-center">
+                <span class="vs-badge">VS</span>
+              </div>
+              <div class="col-md-5">
+                <select class="form-select glass-select" id="compareT2" onchange="renderTeamCompare()">
+                  <option value="">Select Team 2</option>
+                </select>
+              </div>
+            </div>
+            <div id="teamCompareResult"></div>
+            <canvas id="teamCompareChart" style="max-height:300px"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="ipl-footer mt-5 py-4">
+  <div class="container-fluid px-4">
+    <div class="row align-items-center">
+      <div class="col-md-6 text-center text-md-start">
+        <span class="footer-brand"><i class="fas fa-cricket-bat-ball me-2"></i>IPL Analytics Pro</span>
+        <p class="footer-sub mb-0">Professional Sports Analytics Dashboard</p>
+      </div>
+      <div class="col-md-6 text-center text-md-end mt-2 mt-md-0">
+        <span class="footer-info">Built with Chart.js · Bootstrap 5 · PapaParse</span>
+        <p class="footer-copy mb-0">© 2024 IPL Analytics Dashboard</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
